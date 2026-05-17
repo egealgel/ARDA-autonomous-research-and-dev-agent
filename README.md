@@ -33,7 +33,7 @@ uv run uvicorn app.main:app --reload
 
 API: http://localhost:8000/docs
 
-## Konfig
+## Config
 
 `.env` (örneği `backend/.env.example`):
 - `ANTHROPIC_API_KEY` — Claude API anahtarı
