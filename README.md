@@ -14,14 +14,6 @@ docs/       Mimari notları
 storage/    Lokal artifact storage (S3 yerine, gitignored)
 ```
 
-## Aşamalar
-
-- **Aşama 1** ✅ — Tek görev uçtan uca: `POST /tasks` → Claude → DB + storage + maliyet
-- **Aşama 2** ✅ — Research ajanı: scrape + GitHub API + chunked embed → pgvector → RAG search → Claude with CONTEXT (citation'lı)
-- **Aşama 3** ✅ — Planner ajanı: `software_roadmap` / `research_plan` / `prd` (3 sistem prompt'u, opsiyonel URL ile zenginleştirme)
-- **Aşama 4** ✅ — React dashboard: 4 sayfa, page slide transitions, glassmorphism, animasyonlu card grid, Lenis smooth scroll, markdown render
-- (Sıraya alındı) — APScheduler ile zamanlanmış görevler, AWS dağıtımı
-
 ## Stack
 
 | Katman | Teknoloji |
