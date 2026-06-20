@@ -20,6 +20,8 @@ class TaskRead(BaseModel):
     id: uuid.UUID
     prompt: str
     status: str
+    agent: str | None = None
+    params: dict | None = None
     result_text: str | None
     result_path: str | None
     error: str | None

@@ -1,41 +1,88 @@
-# Autonomous Research & Dev Agent
+# ARDA — Autonomous Research & Dev Agent
 
-Multi-agent system: kullanıcı doğal dilde görev tanımlar, sistem araştırma yapar, kod üretir, rapor çıkarır.
+> Bir görev tanımla. Sistem URL'leri tarar, vektör hafızaya yazar, Claude Sonnet 4.6 ile detaylı roadmap, PRD veya araştırma planı üretir.
+
+Multi-agent stack: bir backend (FastAPI + Claude + Postgres + pgvector + Redis/RQ) + animasyonlu bir React dashboard (Framer Motion + Lenis + TanStack Query).
 
 ## Monorepo Yapısı
 
 ```
-backend/    FastAPI + Claude API orchestration
-frontend/   React dashboard (Aşama 4)
-infra/      docker-compose (lokal), Terraform (Aşama 4)
+backend/    FastAPI + Claude + planner/research agents + pgvector RAG
+frontend/   React + TypeScript + Tailwind + Framer Motion dashboard
+infra/      docker-compose (Postgres+pgvector, Redis)
 docs/       Mimari notları
 storage/    Lokal artifact storage (S3 yerine, gitignored)
 ```
 
 ## Aşamalar
 
-- **Aşama 1** — Tek görev uçtan uca: `/task` → Claude → DB + storage
-- **Aşama 2** — Araştırma ajanı: web scraping, GitHub, RAG (Pinecone/pgvector)
-- **Aşama 3** — Plan ajanı: araştırma sonuçlarından roadmap / research plan / PRD üretir
-- **Aşama 4** — Orkestratör + React dashboard + EventBridge zamanlama
+- **Aşama 1** ✅ — Tek görev uçtan uca: `POST /tasks` → Claude → DB + storage + maliyet
+- **Aşama 2** ✅ — Research ajanı: scrape + GitHub API + chunked embed → pgvector → RAG search → Claude with CONTEXT (citation'lı)
+- **Aşama 3** ✅ — Planner ajanı: `software_roadmap` / `research_plan` / `prd` (3 sistem prompt'u, opsiyonel URL ile zenginleştirme)
+- **Aşama 4** ✅ — React dashboard: 4 sayfa, page slide transitions, glassmorphism, animasyonlu card grid, Lenis smooth scroll, markdown render
+- (Sıraya alındı) — APScheduler ile zamanlanmış görevler, AWS dağıtımı
+
+## Stack
+
+| Katman | Teknoloji |
+|---|---|
+| Backend | FastAPI · Python 3.13 (uv) · SQLAlchemy 2 · Alembic · Anthropic SDK |
+| LLM | Claude Sonnet 4.6 + prompt-caching ready |
+| DB | PostgreSQL 16 + pgvector (HNSW cosine) |
+| Embeddings | `sentence-transformers/all-MiniLM-L6-v2` (lokal, 384-dim) |
+| Async queue | Redis + RQ (SimpleWorker — Mac fork-safe) |
+| Frontend | Vite · React 18 · TypeScript · Tailwind v4 |
+| Animation | Framer Motion · Lenis (smooth scroll) |
+| Server state | TanStack Query |
+| Markdown | react-markdown + remark-gfm + rehype-highlight |
 
 ## Geliştirme
 
 ```bash
-# Postgres'i başlat
+# 1) Servisler (Postgres + Redis)
 cd infra && docker compose up -d
 
-# Backend'i çalıştır
+# 2) Backend (port 8000)
 cd backend
 uv sync
+cp .env.example .env   # ANTHROPIC_API_KEY'i doldur
+uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
+
+# 3) Worker (research + plan kuyrukları)
+cd backend
+uv run python worker.py
+
+# 4) Frontend (port 5173)
+cd frontend
+npm install
+npm run dev
 ```
 
-API: http://localhost:8000/docs
+Açık uçlar:
+- API + Swagger UI: http://localhost:8000/docs
+- Dashboard: http://localhost:5173
 
-## Config
+## Konfig
 
 `.env` (örneği `backend/.env.example`):
 - `ANTHROPIC_API_KEY` — Claude API anahtarı
+- `ANTHROPIC_MODEL` — default `claude-sonnet-4-6`
 - `DATABASE_URL` — Postgres connection string
+- `REDIS_URL` — Redis URL
 - `STORAGE_PATH` — Lokal artifact dizini (default `./storage`)
+- `MONTHLY_BUDGET_USD` — bilgilendirme için harcama limiti
+
+## Endpoints
+
+| Method | Path | Açıklama |
+|---|---|---|
+| `POST` | `/tasks` | Tek-shot Claude çağrısı (sync) |
+| `GET` | `/tasks` | Tüm görevler (newest first) |
+| `GET` | `/tasks/{id}` | Tek görev detayı |
+| `POST` | `/research` | URL'leri scrape + RAG ile Claude'a sor (async) |
+| `GET` | `/research/{id}` | Research görev durumu |
+| `POST` | `/plan` | Roadmap / research_plan / PRD üret (async) |
+| `GET` | `/plan/{id}` | Plan görev durumu |
+| `GET` | `/usage/current-month` | Aylık token + maliyet |
+| `GET` | `/health` | Healthcheck |

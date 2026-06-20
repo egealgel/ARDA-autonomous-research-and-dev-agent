@@ -20,6 +20,8 @@ def _to_read(task: Task) -> TaskRead:
             "id": task.id,
             "prompt": task.prompt,
             "status": task.status,
+            "agent": task.agent,
+            "params": task.params,
             "result_text": task.result_text,
             "result_path": task.result_path,
             "error": task.error,
